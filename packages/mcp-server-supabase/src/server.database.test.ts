@@ -328,6 +328,41 @@ describe('tools', () => {
     );
   });
 
+  test('primary_keys follows key order and excludes INCLUDE columns', async () => {
+    const { callTool } = await setup();
+
+    const { project } = await createProjectFixture({
+      organization: { name: 'My Org', allowed_release_channels: ['ga'] },
+      project: { name: 'Project 1', region: 'us-east-1' },
+    });
+
+    await project.db.exec(`
+      create table membership (
+        org_id int not null,
+        user_id int not null,
+        primary key (user_id, org_id)
+      );
+      create table inc (a int not null, b int not null);
+      create unique index inc_pk_idx on inc (a) include (b);
+      alter table inc add constraint inc_pk primary key using index inc_pk_idx;
+    `);
+
+    const result = await callTool({
+      name: 'list_tables',
+      arguments: {
+        project_id: project.id,
+        schemas: ['public'],
+        verbose: true,
+      },
+    });
+
+    const primaryKeys = (name: string) =>
+      result.tables.find((t: { name: string }) => t.name === name).primary_keys;
+
+    expect(primaryKeys('public.membership')).toEqual(['user_id', 'org_id']);
+    expect(primaryKeys('public.inc')).toEqual(['a']);
+  });
+
   test('single-column FK is represented with one-element arrays', async () => {
     const { callTool } = await setup();
 
