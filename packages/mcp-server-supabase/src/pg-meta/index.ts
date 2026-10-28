@@ -53,9 +53,6 @@ export function listExtensionsSql() {
 
 /**
  * Generates a SQL segment that coalesces rows into an array of JSON objects.
- *
- * Pass `orderBy` when element order matters. Without it, `array_agg` follows
- * scan order, which is not guaranteed.
  */
 export const coalesceRowsToArray = (
   source: string,

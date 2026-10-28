@@ -288,8 +288,6 @@ describe('tools', () => {
       project: { name: 'Project 1', region: 'us-east-1' },
     });
 
-    // ALTER COLUMN rewrites the column's pg_attribute row, moving it to the
-    // end of the heap, so scan order no longer matches attnum order
     await project.db.exec(`
       create table people (id integer, email text, name text, age integer);
       alter table people alter column email set not null;
