@@ -280,6 +280,42 @@ describe('tools', () => {
     );
   });
 
+  test('list tables returns columns in ordinal position order after ALTER COLUMN', async () => {
+    const { callTool } = await setup();
+
+    const { project } = await createProjectFixture({
+      organization: { name: 'My Org', allowed_release_channels: ['ga'] },
+      project: { name: 'Project 1', region: 'us-east-1' },
+    });
+
+    // ALTER COLUMN rewrites the column's pg_attribute row, moving it to the
+    // end of the heap, so scan order no longer matches attnum order
+    await project.db.exec(`
+      create table people (id integer, email text, name text, age integer);
+      alter table people alter column email set not null;
+      alter table people alter column id set default 0;
+    `);
+
+    const result = await callTool({
+      name: 'list_tables',
+      arguments: {
+        project_id: project.id,
+        schemas: ['public'],
+        verbose: true,
+      },
+    });
+
+    const peopleTable = result.tables.find(
+      (t: { name: string }) => t.name === 'public.people'
+    );
+    expect(peopleTable.columns.map((c: { name: string }) => c.name)).toEqual([
+      'id',
+      'email',
+      'name',
+      'age',
+    ]);
+  });
+
   test('composite FK is grouped as one constraint with positionally ordered columns', async () => {
     const { callTool } = await setup();
 
